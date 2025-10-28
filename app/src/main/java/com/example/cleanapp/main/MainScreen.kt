@@ -1,7 +1,9 @@
 package com.example.cleanapp.main
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,76 +36,90 @@ import org.koin.androidx.compose.koinViewModel
 import kotlin.collections.listOf
 
 @Composable
-fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsState()
+fun MainScreen(state: MainState, onElementClick: (String) -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
-    ){
-        when (val currentState = state) {
-            is MainState.Content -> ContentState(list = currentState.list)
-            is MainState.Error -> ErrorState(message = currentState.message)
+    ) {
+        when (state) {
+            is MainState.Content -> ContentState(
+                list = state.list,
+                onElementClick = onElementClick
+            )
+            is MainState.Error -> ErrorState(message = state.message)
             MainState.Loading -> LoadingState()
         }
     }
 }
+
+
 @Composable
 fun LoadingState() {
     CircularProgressIndicator()
 }
+
 @Composable
 fun ErrorState(message: String) {
     Text(text = message, color = Color.Red)
 }
+
+// ИЗМЕНЕНИЕ: ContentState получает лямбду onElementClick
 @Composable
-fun ContentState(list: List<ListElementEntity>) {
+fun ContentState(
+    list: List<ListElementEntity>,
+    onElementClick: (String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(list) { element ->
-            ElementRow(element = element)
+            ElementRow(
+                element = element,
+                // Передаем modifier с обработчиком клика в ElementRow
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onElementClick(element.id) }
+                    .padding(8.dp)
+            )
         }
     }
 }
 
 @Composable
-fun ElementRow(element: ListElementEntity) {
+fun ElementRow(element: ListElementEntity, modifier: Modifier =
+    Modifier) {
     Row(
-        modifier = Modifier
-            .padding(vertical = 8.dp)
-            .fillMaxWidth(),
+        modifier = modifier, // Применяем переданный modifier здесь
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            modifier = Modifier.size(100.dp),
             model = element.image,
-            contentScale = ContentScale.Crop,
-            contentDescription = null
+            contentDescription = "Element Image",
+            modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = element.title,
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Like(isLiked = element.like)
+        Column {
+            Text(text = element.title)
+        }
     }
 }
-
+// --- ИНСТРУМЕНТЫ ДЛЯ ПРЕВЬЮ ---
 private val sampleDataForPreview = listOf(
     ListElementEntity("1", "Continue Cat", "https://http.cat/images/100.jpg", true),
     ListElementEntity("2", "Ok Cat", "https://http.cat/images/200.jpg", true),
     ListElementEntity("3", "Multiple Cat", "https://http.cat/images/300.jpg", false)
 )
-@Preview(name = "Content State", showBackground = true)
+
+@Preview(showBackground = true)
 @Composable
 fun ContentStatePreview() {
-    CleanAppTheme {
-        Surface(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            ContentState(list = sampleDataForPreview)
-        }
-    }
+    val sampleData = listOf(
+        ListElementEntity("1", "Continue Cat", "https://http.cat/images/100.jpg", true),
+        ListElementEntity("2", "Ok Cat", "https://http.cat/images/200.jpg", true),
+        ListElementEntity("3", "Multiple Cat", "https://http.cat/images/300.jpg", false)
+    )
+    ContentState(list = sampleData, onElementClick = {})
 }
 @Preview(name = "Loading State", showBackground = true)
 @Composable
@@ -111,12 +128,12 @@ fun LoadingStatePreview() {
         Surface(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment =
                 Alignment.Center) {
+// И его тоже вызываем напрямую
                 LoadingState()
             }
         }
     }
 }
-
 @Preview(name = "Error State", showBackground = true)
 @Composable
 fun ErrorStatePreview() {
