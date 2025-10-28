@@ -17,4 +17,13 @@ class ListRepositoryImpl(
             Result.failure(e)
         }
     }
+
+    override suspend fun getElementById(id: String): Result<ListElementEntity> {
+        return try {
+            val dto = apiService.getCatImageById(id)
+            Result.success(dto.toDomain())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

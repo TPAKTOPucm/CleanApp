@@ -19,7 +19,8 @@ val appModule = module {
     viewModel { params -> // Используем params для передачи
         SavedStateHandle
         DetailsViewModel(
-            savedStateHandle = params.get()
+            savedStateHandle = params.get(),
+            repository = get()
         )
     }
 // Network
