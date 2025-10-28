@@ -1,8 +1,8 @@
 [versions]
 agp = "8.13.0"
-kotlin = "2.0.21"
+kotlin = "2.0.0"
 coreKtx = "1.10.1"
-ksp = "2.2.20-2.0.3"
+ksp = "2.0.0-1.0.21"
 
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -15,12 +15,13 @@ appcompat = "1.6.1"
 material = "1.10.0"
 
 room = "2.8.0"
-retrofit = "3.0.0"
+retrofit = "2.9.0"
 koin = "4.1.1"
 coil = "2.6.0"
 
 navigationCompose = "2.8.1"
 kotlinxSerialization = "1.6.3"
+kotlinxSerializationConverter = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,7 +45,8 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 # Retrofit with Kotlinx Serialization
 retrofit-core = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
-retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" } # <-- ADDED
+retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
+retrofit-converter-kotlinx-serialization = { module = "com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter", version.ref = "kotlinxSerializationConverter" }
 # Room with KSP
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
