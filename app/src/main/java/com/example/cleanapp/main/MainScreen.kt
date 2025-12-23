@@ -26,14 +26,13 @@ import com.example.cleanapp.main.vm.MainState
 import com.example.cleanapp.ui.theme.CleanAppTheme
 import com.example.domain.entity.ListElementEntity
 
-// MainScreen теперь "глупый" - не знает о ViewModel
 @Composable
 fun MainScreen(
     state: MainState,
-    playerState: com.example.cleanapp.main.vm.PlayerState, // Данные из Плеера
-    onPlayPauseClick: (String) -> Unit, // Клик по кнопке Play
+    playerState: com.example.cleanapp.main.vm.PlayerState,
+    onPlayPauseClick: (String) -> Unit,
     onElementClick: (String) -> Unit,
-    onToggleLike: (String) -> Unit // Клик по кнопке Лайк
+    onToggleLike: (String) -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -64,7 +63,6 @@ fun ErrorState(message: String) {
     Text(text = message, color = Color.Red)
 }
 
-// ContentState получает лямбду onElementClick
 @Composable
 fun ContentState(
     list: List<ListElementEntity>,
@@ -112,9 +110,8 @@ fun ElementRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp) // Фиксированная высота для красивого отображения
+                .height(120.dp)
         ) {
-            // Изображение котика на весь фон
             AsyncImage(
                 model = element.image,
                 contentDescription = "Album Art",
@@ -128,7 +125,6 @@ fun ElementRow(
                 )
             )
 
-            // Scrim
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -210,7 +206,6 @@ fun ElementRow(
     }
 }
 
-// --- ИНСТРУМЕНТЫ ДЛЯ ПРЕВЬЮ ---
 private val sampleDataForPreview = listOf(
     ListElementEntity("1", "Cool Cat", "https://cataas.com/cat/says/hello", true),
     ListElementEntity("2", "Serious Cat", "https://cataas.com/cat", false),

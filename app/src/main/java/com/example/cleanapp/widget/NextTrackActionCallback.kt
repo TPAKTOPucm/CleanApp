@@ -12,18 +12,11 @@ class NextTrackActionCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        // Создаем Intent с командой "Следующий трек"
         val intent = Intent(context, MusicWidgetReceiver::class.java).apply {
             action = MusicWidgetActions.ACTION_NEXT_TRACK
         }
-        // Отправляем системное широковещательное сообщение,
-        // которое будет "услышано" нашим Foreground Service в следующей работе.
         context.sendBroadcast(intent)
 
-        // Примечание: Мы не обновляем состояние виджета здесь,
-        // так как не знаем заранее, каким будет следующий трек.
-        // Эту логику должен будет взять на себя Foreground Service,
-        // который, получив эту команду, обновит виджет с новыми данными.
     }
 }
 

@@ -2,9 +2,6 @@ package com.example.domain.usecase
 
 import com.example.domain.repository.ListRepository
 
-/**
- * Use Case для переключения статуса лайкнуто у элемента
- */
 class ToggleLikeUseCase(
     private val listRepository: ListRepository
 ) : UseCase<String, Unit> {

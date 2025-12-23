@@ -12,10 +12,7 @@ class App : Application() {
         super.onCreate()
         startKoin {
             androidContext(this@App)
-            // Эта функция регистрирует KoinWorkerFactory,
-            // чтобы Koin мог создавать экземпляры Worker'ов
             workManagerFactory()
-            // Загружаем все модули нашего приложения
             modules(appModule, dataModule)
         }
     }

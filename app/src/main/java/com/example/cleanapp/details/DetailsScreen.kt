@@ -29,7 +29,6 @@ import com.example.cleanapp.details.vm.DetailsViewModel
 fun DetailsScreen(
     viewModel: DetailsViewModel = koinViewModel()
 ) {
-    // Подписываемся на изменения state из ViewModel
     val state by viewModel.state.collectAsState()
 
     Box(
@@ -54,7 +53,6 @@ fun DetailsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // При нажатии на кнопку вызываем метод из ViewModel
                     Button(onClick = { viewModel.applyFilter() }) {
                         Text("Применить Ч/Б фильтр (нужна зарядка)")
                     }
@@ -67,11 +65,5 @@ fun DetailsScreen(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DetailsScreenPreview() {
-    // Preview для тестирования
 }
 

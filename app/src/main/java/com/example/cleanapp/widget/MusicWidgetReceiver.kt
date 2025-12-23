@@ -17,12 +17,9 @@ class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
             action == MusicWidgetActions.ACTION_NEXT_TRACK ||
             action == MusicWidgetActions.ACTION_TOGGLE_LIKE
         ) {
-            // Создаем Intent, адресованный нашему сервису
             val serviceIntent = Intent(context, PlaybackService::class.java).apply {
                 this.action = action
             }
-            // Запускаем сервис с этой командой
-            // startForegroundService гарантирует доставку, даже если приложение в фоне
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)
             } else {

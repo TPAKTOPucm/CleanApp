@@ -22,7 +22,6 @@ import com.example.data.di.DiQualifiers.DTO_TO_CACHE_MAPPER
 import com.example.data.di.DiQualifiers.CACHE_TO_DOMAIN_MAPPER
 
 val dataModule = module {
-    // Network (остается здесь, так как ApiService - деталь реализации)
     single<ApiService> {
         val contentType = "application/json".toMediaType()
         val json = Json { ignoreUnknownKeys = true }
@@ -33,7 +32,6 @@ val dataModule = module {
             .create(ApiService::class.java)
     }
 
-    // Database
     single { 
         Room.databaseBuilder(
             androidContext(), 
@@ -43,14 +41,12 @@ val dataModule = module {
     }
     single { get<AppDatabase>().catDao() }
 
-    // ImageLoader
     single {
         ImageLoader.Builder(androidContext())
             .respectCacheHeaders(false) // Важно для некоторых API
             .build()
     }
 
-    // Mappers
     factory<Mapper<CatImageDto, CatCacheEntity>>(DTO_TO_CACHE_MAPPER) { 
         CatDtoToCacheMapper() 
     }
@@ -58,7 +54,6 @@ val dataModule = module {
         CatCacheToDomainMapper() 
     }
 
-    // Repository
     single<ListRepository> { 
         ListRepositoryImpl(
             get(), 

@@ -42,18 +42,15 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        // 1. Инициализируем ExoPlayer
         player = ExoPlayer.Builder(this).build()
         player.repeatMode = Player.REPEAT_MODE_ALL
 
-        // 2. Добавляем слушатель событий плеера
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 updateWidgetState(isPlaying = isPlaying)
             }
             
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                // При автоматическом переключении трека (трек закончился)
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     if (catsList.isNotEmpty()) {
                         val nextCat = findNextCatInList()
@@ -61,12 +58,10 @@ class PlaybackService : MediaSessionService() {
                             val nextIndex = catsList.indexOf(nextCat)
                             currentSelectedCatId = nextCat.id
                             currentSelectedCatIndex = nextIndex
-                            
-                            // Обновляем MediaMetadata
+
                             CoroutineScope(Dispatchers.Main).launch {
                                 updateMediaMetadataForSelectedCat(nextCat.id)
                             }
-                            // Обновляем виджет
                             updateWidgetWithCurrentCat()
                         }
                     }
@@ -74,7 +69,6 @@ class PlaybackService : MediaSessionService() {
             }
         })
 
-        // Загружаем котиков и создаем треки с обложками
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 catsList = listRepository.getElements().first()
@@ -103,7 +97,6 @@ class PlaybackService : MediaSessionService() {
             }
         }
 
-        // Создаем MediaSession с переопределенными Next/Prev
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {
                 override fun onPlayerCommandRequest(
@@ -134,7 +127,6 @@ class PlaybackService : MediaSessionService() {
                             return Player.COMMAND_INVALID
                         }
                         Player.COMMAND_SEEK_TO_PREVIOUS -> {
-                            // Переопределяем Prev - листаем ВСЕ элементы подряд назад
                             if (catsList.isNotEmpty()) {
                                 val prevCat = findPreviousCatInList()
                                 if (prevCat != null) {
@@ -162,12 +154,10 @@ class PlaybackService : MediaSessionService() {
             .build()
     }
 
-    // Метод обязателен для MediaSessionService. Возвращает сессию контроллерам.
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
         return mediaSession
     }
 
-    // Освобождаем ресурсы при убийстве сервиса
     override fun onDestroy() {
         mediaSession?.run {
             player.release()
@@ -177,15 +167,12 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
-    // Создание MediaItem с обложкой котика
     private suspend fun createMediaItemWithArtwork(
         cat: ListElementEntity,
         audioResId: Int
     ): MediaItem = withContext(Dispatchers.IO) {
-        // Загружаем Bitmap из URL через Coil
         val bitmap = loadBitmapFromUrl(cat.image)
-        
-        // Создаем MediaMetadata с обложкой
+
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(cat.title)
             .setArtist("Meowify")
@@ -203,13 +190,12 @@ class PlaybackService : MediaSessionService() {
             .setMediaMetadata(metadataBuilder.build())
             .build()
     }
-    
-    // Загрузка Bitmap через Coil
+
     private suspend fun loadBitmapFromUrl(url: String): Bitmap? = withContext(Dispatchers.IO) {
         try {
             val request = ImageRequest.Builder(applicationContext)
                 .data(url)
-                .allowHardware(false) // Нужен software bitmap для MediaMetadata
+                .allowHardware(false)
                 .build()
             
             val result = imageLoader.execute(request)
@@ -221,19 +207,16 @@ class PlaybackService : MediaSessionService() {
             null
         }
     }
-    
-    // Конвертация Bitmap в ByteArray
+
     private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         return stream.toByteArray()
     }
-    
-    // Кэшируем ID и индекс текущего выбранного кота
+
     private var currentSelectedCatId: String? = null
     private var currentSelectedCatIndex: Int = -1
-    
-    // Находим следующего кота в списке (циклически, все подряд)
+
     private fun findNextCatInList(): ListElementEntity? {
         if (catsList.isEmpty()) return null
 
@@ -244,47 +227,40 @@ class PlaybackService : MediaSessionService() {
 
         return catsList.first()
     }
-    
-    // TНаходим предыдущего кота в списке (циклически, все подряд)
+
     private fun findPreviousCatInList(): ListElementEntity? {
         if (catsList.isEmpty()) return null
-        
-        // Если есть выбранный кот, находим предыдущего
+
         if (currentSelectedCatIndex >= 0) {
             val prevIndex = if (currentSelectedCatIndex > 0) {
                 currentSelectedCatIndex - 1
             } else {
-                catsList.size - 1 // Циклически к последнему
+                catsList.size - 1
             }
             return catsList[prevIndex]
         }
-        
-        // Иначе возвращаем последнего
+
         return catsList.last()
     }
-    
-    // Обновление виджета с данными выбранного кота
+
     private fun updateWidgetWithCurrentCat() {
         if (catsList.isEmpty()) return
-        
-        // Берем кота по ID (если выбран) или по текущему треку
+
         val currentCat = if (currentSelectedCatId != null) {
             catsList.find { it.id == currentSelectedCatId }
         } else {
             val currentIndex = player.currentMediaItemIndex
             if (currentIndex >= 0 && currentIndex < catsList.size) catsList[currentIndex] else null
         } ?: return
-        
-        // Отправляем Broadcast для синхронизации MainActivity
+
         val intent = Intent("com.example.cleanapp.CAT_SELECTED").apply {
-            setPackage(packageName) // Explicit intent для безопасности
+            setPackage(packageName)
             putExtra("CAT_ID", currentCat.id)
             putExtra("CAT_INDEX", catsList.indexOf(currentCat))
         }
         sendBroadcast(intent)
         
         CoroutineScope(Dispatchers.IO).launch {
-            // Сохраняем картинку котика в файл для виджета
             val bitmap = loadBitmapFromUrl(currentCat.image)
             val imagePath = bitmap?.let { saveBitmapToCache(it, currentCat.id) }
             
@@ -296,8 +272,7 @@ class PlaybackService : MediaSessionService() {
             )
         }
     }
-    
-    // Сохранение Bitmap в кэш для виджета
+
     private fun saveBitmapToCache(bitmap: Bitmap, catId: String): String {
         val cacheDir = applicationContext.cacheDir
         val imageFile = java.io.File(cacheDir, "widget_cat_$catId.png")
@@ -308,18 +283,14 @@ class PlaybackService : MediaSessionService() {
         
         return imageFile.absolutePath
     }
-    
-    // Обновление MediaMetadata уведомления для выбранного кота
+
     private suspend fun updateMediaMetadataForSelectedCat(catId: String) = withContext(Dispatchers.IO) {
         val cat = catsList.find { it.id == catId } ?: return@withContext
-        
-        // Загружаем Bitmap
+
         val bitmap = loadBitmapFromUrl(cat.image)
-        
-        // Создаем новый MediaMetadata
+
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(cat.title)
-            .setArtist("Meowify")
             .setArtworkUri(android.net.Uri.parse(cat.image))
         
         bitmap?.let {
@@ -328,8 +299,7 @@ class PlaybackService : MediaSessionService() {
                 MediaMetadata.PICTURE_TYPE_FRONT_COVER
             )
         }
-        
-        // Обновляем метаданные текущего трека
+
         withContext(Dispatchers.Main) {
             val currentIndex = player.currentMediaItemIndex
             if (currentIndex >= 0 && currentIndex < player.mediaItemCount) {
@@ -337,8 +307,7 @@ class PlaybackService : MediaSessionService() {
                 val newItem = currentItem.buildUpon()
                     .setMediaMetadata(metadataBuilder.build())
                     .build()
-                
-                // Заменяем текущий MediaItem с сохранением позиции
+
                 val wasPlaying = player.isPlaying
                 val position = player.currentPosition
                 
@@ -349,7 +318,6 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    // Обновление DataStore виджета
     private fun updateWidgetState(
         isPlaying: Boolean? = null,
         trackTitle: String? = null,
@@ -363,12 +331,10 @@ class PlaybackService : MediaSessionService() {
             val widgetIds = manager.getGlanceIds(MusicWidget::class.java)
             if (widgetIds.isEmpty()) return@launch
 
-            // Обновляем состояние каждого активного виджета
             widgetIds.forEach { glanceId ->
                 updateAppWidgetState(context, glanceId) { prefs ->
                     isPlaying?.let { prefs[MusicWidgetState.isPlayingKey] = it }
                     trackTitle?.let { prefs[MusicWidgetState.trackTitleKey] = it }
-                    // Сохраняем данные текущего кота
                     imageUrl?.let { prefs[MusicWidgetState.imageUrlKey] = it }
                     isLiked?.let { prefs[MusicWidgetState.isLikedKey] = it }
                     catId?.let { prefs[MusicWidgetState.catIdKey] = it }
@@ -379,7 +345,6 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Обрабатываем наши кастомные команды от Виджета
         when (intent?.action) {
             MusicWidgetActions.ACTION_PLAY_PAUSE -> {
                 if (player.isPlaying) {
@@ -389,66 +354,52 @@ class PlaybackService : MediaSessionService() {
                 }
             }
             MusicWidgetActions.ACTION_NEXT_TRACK -> {
-                // Next листает ВСЕ элементы подряд
                 if (catsList.isNotEmpty()) {
                     val nextCat = findNextCatInList()
                     if (nextCat != null) {
                         val nextIndex = catsList.indexOf(nextCat)
                         currentSelectedCatId = nextCat.id
                         currentSelectedCatIndex = nextIndex
-                        
-                        // Переключаем трек если нужно (по четности индекса)
+
                         val targetTrack = nextIndex % 2
                         if (player.currentMediaItemIndex != targetTrack) {
                             player.seekToDefaultPosition(targetTrack)
                         }
-                        
-                        // Обновляем MediaMetadata
+
                         CoroutineScope(Dispatchers.Main).launch {
                             updateMediaMetadataForSelectedCat(nextCat.id)
                         }
-                        // Обновляем виджет
                         updateWidgetWithCurrentCat()
                     }
                 }
             }
-            // Переключаем лайк выбранного кота
             MusicWidgetActions.ACTION_TOGGLE_LIKE -> {
                 val catId = currentSelectedCatId
                 if (catId != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        // Переключаем лайк в БД
                         toggleLikeUseCase.executeSuspend(catId)
-                        // Перезагружаем список котиков с обновленными лайками
                         catsList = listRepository.getElements().first()
-                        // Обновляем виджет с новым статусом лайка
                         updateWidgetWithCurrentCat()
                     }
                 }
             }
-            // Обновление выбранного кота (от MainActivity)
             "ACTION_SELECT_CAT" -> {
                 val catId = intent.getStringExtra("CAT_ID")
                 val catIndex = intent.getIntExtra("CAT_INDEX", -1)
                 if (catId != null) {
                     currentSelectedCatId = catId
-                    currentSelectedCatIndex = catIndex // Сохраняем индекс в списке
-                    // Обновляем виджет с новым котом
+                    currentSelectedCatIndex = catIndex
                     updateWidgetWithCurrentCat()
-                    // Обновляем MediaMetadata уведомления с новым котом
                     CoroutineScope(Dispatchers.Main).launch {
                         updateMediaMetadataForSelectedCat(catId)
                     }
                 }
             }
-            // Обновление лайка (от MainActivity)
             "ACTION_UPDATE_LIKE" -> {
                 val catId = intent.getStringExtra("CAT_ID")
                 if (catId != null) {
-                    // Перезагружаем список котов из БД (с обновленными лайками)
                     CoroutineScope(Dispatchers.IO).launch {
                         catsList = listRepository.getElements().first()
-                        // Если это выбранный кот, обновляем виджет
                         if (currentSelectedCatId == catId) {
                             updateWidgetWithCurrentCat()
                         }
@@ -457,8 +408,6 @@ class PlaybackService : MediaSessionService() {
             }
         }
 
-        // ВАЖНО: Обязательно вызываем super, чтобы Media3 мог обработать
-        // свои стандартные кнопки уведомлений и жизненный цикл сервиса
         return super.onStartCommand(intent, flags, startId)
     }
 }

@@ -13,18 +13,14 @@ import com.example.domain.usecase.GetCatsByIdUseCase
 import com.example.domain.usecase.ToggleLikeUseCase
 
 val appModule = module {
-    // Use Cases
     factory { GetCatsUseCase(get()) }
     factory { GetCatsByIdUseCase(get()) }
     factory { ToggleLikeUseCase(get()) }
 
-    // WorkManager
     single { WorkManager.getInstance(androidContext()) }
 
-    // Workers
     worker { FilterWorker(get(), get(), get()) }
 
-    // ViewModels
     viewModel { MainViewModel(get(), get()) }
 
     viewModel { params ->

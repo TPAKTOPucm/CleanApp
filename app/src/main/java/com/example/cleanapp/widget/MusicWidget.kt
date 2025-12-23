@@ -61,13 +61,12 @@ class MusicWidget : GlanceAppWidget() {
         imagePath: String?
     ) {
         val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-        // Иконка лайка меняется в зависимости от статуса
         val likeIcon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border
 
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ColorProvider(Color.White))
+                .background(Color.White)
                 .cornerRadius(16.dp)
                 .padding(8.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically

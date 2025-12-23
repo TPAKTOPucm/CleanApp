@@ -17,14 +17,12 @@ import coil.size.Size
 import java.io.File
 import java.io.FileOutputStream
 
-// Ключи для обмена данными между ViewModel и Worker
 const val KEY_IMAGE_URI = "KEY_IMAGE_URI"
 const val KEY_FILTERED_URI = "KEY_FILTERED_URI"
 
 class FilterWorker(
     private val appContext: Context,
     workerParams: WorkerParameters,
-    // Зависимость ImageLoader будет предоставлена Koin
     private val imageLoader: ImageLoader
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -33,36 +31,28 @@ class FilterWorker(
         return try {
             require(!imageUriString.isNullOrBlank()) { "Image URI is empty" }
 
-            // Создаем запрос для Coil, чтобы получить Bitmap
             val request = ImageRequest.Builder(appContext)
                 .data(imageUriString)
                 .size(Size.ORIGINAL)
-                // Указываем программный формат, который можно изменять
                 .bitmapConfig(Bitmap.Config.ARGB_8888)
-                // Отключаем аппаратное ускорение, чтобы избежать immutable Bitmap
                 .allowHardware(false)
                 .build()
 
-            // Выполняем запрос. Coil сам решит, взять картинку из кэша или сети
             val result = imageLoader.execute(request)
             val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
             require(bitmap != null) { "Failed to decode bitmap" }
 
-            // Применяем фильтр и сохраняем результат
             val filteredBitmap = applyBlackAndWhiteFilter(bitmap)
             val filteredUri = saveBitmapToFile(appContext, filteredBitmap)
 
-            // Создаем выходные данные с URI нового файла
             val outputData = workDataOf(KEY_FILTERED_URI to filteredUri.toString())
             Result.success(outputData)
         } catch (throwable: Throwable) {
-            // В случае любой ошибки логируем ее и возвращаем failure
             Log.e("FilterWorker", "Error applying filter", throwable)
             Result.failure()
         }
     }
 
-    // Вспомогательные функции для обработки изображения
     private fun applyBlackAndWhiteFilter(src: Bitmap): Bitmap {
         val config = src.config ?: Bitmap.Config.ARGB_8888
         val result = Bitmap.createBitmap(src.width, src.height, config)

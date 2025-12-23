@@ -26,11 +26,11 @@ class ListRepositoryImpl(
 ) : ListRepository {
     
     override fun getElements(): Flow<List<ListElementEntity>> {
-        return catDao.getCatsFlow() // 1. Берем постоянный поток данных из БД
-            .map { catsFromCache -> // 2. Мапим каждую новую порцию данных в доменную модель
+        return catDao.getCatsFlow()
+            .map { catsFromCache ->
                 catsFromCache.map { cacheToDomainMapper.map(it) }
             }
-            .onStart { // 3. При первой подписке на этот Flow, выполняем этот блок
+            .onStart {
                 try {
                     val currentCats = catDao.getCatsSync()
                     
@@ -51,8 +51,6 @@ class ListRepositoryImpl(
     }
 
     override fun getElement(id: String): Flow<ListElementEntity?> {
-        // Для одного элемента обновление из сети не делаем (для простоты),
-        // просто берем актуальные данные из кэша.
         return catDao.getCatById(id).map { catFromCache ->
             catFromCache?.let { cacheToDomainMapper.map(it) }
         }

@@ -61,10 +61,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable<MainScreenRoute> {
                             val viewModel: MainViewModel = koinViewModel()
-                            // 1. Сохраняем ссылку на VM для слушателя
                             mainViewModel = viewModel
-                            // 2. ИСПРАВЛЕНИЕ: Если контроллер УЖЕ готов (соединение было быстрым),
-                            // сразу отдаем его во ViewModel
                             controller?.let { viewModel.setController(it) }
 
                             val mainState by viewModel.state.collectAsState()
@@ -145,10 +142,8 @@ class MainActivity : ComponentActivity() {
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
         controllerFuture.addListener({
             try {
-                // 3. Получаем контроллер
                 val ctrl = controllerFuture.get()
                 controller = ctrl
-                // 4. ИСПРАВЛЕНИЕ: Отдаем его во ViewModel (если VM уже создана)
                 mainViewModel?.setController(ctrl)
             } catch (e: Exception) {
                 e.printStackTrace()
