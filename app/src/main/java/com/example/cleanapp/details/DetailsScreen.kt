@@ -74,3 +74,4 @@ fun DetailsScreen(
 fun DetailsScreenPreview() {
     // Preview для тестирования
 }
+

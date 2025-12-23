@@ -9,3 +9,4 @@ data class CatCacheEntity(
     val url: String,
     val isLiked: Boolean = false
 )
+

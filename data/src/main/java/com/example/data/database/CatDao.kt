@@ -26,4 +26,11 @@ interface CatDao {
         clearCats()
         insertCats(cats)
     }
+
+    @Query("UPDATE cats SET isLiked = :isLiked WHERE id = :catId")
+    suspend fun updateLikeStatus(catId: String, isLiked: Boolean)
+
+    @Query("SELECT * FROM cats")
+    suspend fun getCatsSync(): List<CatCacheEntity>
 }
+

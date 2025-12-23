@@ -1,13 +1,13 @@
 package com.example.cleanapp.widget
 
-import android.annotation.SuppressLint
 import android.content.Context
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
@@ -36,32 +36,73 @@ class MusicWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            val prefs = currentState<Preferences>()
-            val trackTitle = prefs[MusicWidgetState.trackTitleKey] ?: "Выберите трек"
-            val isPlaying = prefs[MusicWidgetState.isPlayingKey] ?: false
+            GlanceTheme {
+                val prefs = currentState<Preferences>()
+                val trackTitle = prefs[MusicWidgetState.trackTitleKey] ?: "Выберите трек"
+                val isPlaying = prefs[MusicWidgetState.isPlayingKey] ?: false
+                val isLiked = prefs[MusicWidgetState.isLikedKey] ?: false
+                val imagePath = prefs[MusicWidgetState.imageUrlKey]
 
-            MusicWidgetContent(trackTitle = trackTitle, isPlaying = isPlaying)
+                MusicWidgetContent(
+                    trackTitle = trackTitle,
+                    isPlaying = isPlaying,
+                    isLiked = isLiked,
+                    imagePath = imagePath
+                )
+            }
         }
     }
 
-    @SuppressLint("RestrictedApi")
     @Composable
-    private fun MusicWidgetContent(trackTitle: String, isPlaying: Boolean) {
+    private fun MusicWidgetContent(
+        trackTitle: String,
+        isPlaying: Boolean,
+        isLiked: Boolean,
+        imagePath: String?
+    ) {
         val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+        // Иконка лайка меняется в зависимости от статуса
+        val likeIcon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border
 
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ImageProvider(R.drawable.ic_launcher_background))
+                .background(ColorProvider(Color.White))
                 .cornerRadius(16.dp)
                 .padding(8.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            Image(
-                provider = ImageProvider(R.drawable.ic_launcher_foreground),
-                contentDescription = "Album Art",
-                modifier = GlanceModifier.size(64.dp)
-            )
+            // Картинка котика в круге!
+            if (imagePath != null && imagePath.isNotEmpty()) {
+                val imageFile = java.io.File(imagePath)
+                if (imageFile.exists()) {
+                    val bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
+                    Image(
+                        provider = ImageProvider(bitmap),
+                        contentDescription = "Cat Album Art",
+                        modifier = GlanceModifier
+                            .size(64.dp)
+                            .cornerRadius(32.dp),
+                        contentScale = androidx.glance.layout.ContentScale.Crop
+                    )
+                } else {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_launcher_foreground),
+                        contentDescription = "Album Art",
+                        modifier = GlanceModifier
+                            .size(64.dp)
+                            .cornerRadius(32.dp)
+                    )
+                }
+            } else {
+                Image(
+                    provider = ImageProvider(R.drawable.ic_launcher_foreground),
+                    contentDescription = "Album Art",
+                    modifier = GlanceModifier
+                        .size(64.dp)
+                        .cornerRadius(32.dp)
+                )
+            }
             Spacer(GlanceModifier.width(8.dp))
             Column(
                 modifier = GlanceModifier.defaultWeight(),
@@ -69,7 +110,7 @@ class MusicWidget : GlanceAppWidget() {
             ) {
                 Text(
                     text = trackTitle,
-                    style = TextStyle(color = ColorProvider(Color.White))
+                    style = TextStyle(color = ColorProvider(Color.Black))
                 )
                 Spacer(GlanceModifier.height(4.dp))
                 Row(
@@ -82,17 +123,30 @@ class MusicWidget : GlanceAppWidget() {
                         contentDescription = "Play/Pause",
                         modifier = GlanceModifier
                             .size(36.dp)
-                            .clickable(onClick = actionRunCallback<PlayPauseActionCallback>())
+                            .clickable(onClick = actionRunCallback<PlayPauseActionCallback>()),
+                        colorFilter = androidx.glance.ColorFilter.tint(ColorProvider(Color.Black))
                     )
                     Image(
                         provider = ImageProvider(R.drawable.ic_skip_next),
                         contentDescription = "Next",
                         modifier = GlanceModifier
                             .size(36.dp)
-                            .clickable(onClick = actionRunCallback<NextTrackActionCallback>())
+                            .clickable(onClick = actionRunCallback<NextTrackActionCallback>()),
+                        colorFilter = androidx.glance.ColorFilter.tint(ColorProvider(Color.Black))
+                    )
+                    Image(
+                        provider = ImageProvider(likeIcon),
+                        contentDescription = if (isLiked) "Unlike" else "Like",
+                        modifier = GlanceModifier
+                            .size(36.dp)
+                            .clickable(onClick = actionRunCallback<ToggleLikeActionCallback>()),
+                        colorFilter = androidx.glance.ColorFilter.tint(
+                            ColorProvider(if (isLiked) Color.Red else Color.Gray)
+                        )
                     )
                 }
             }
         }
     }
 }
+

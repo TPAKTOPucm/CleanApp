@@ -5,6 +5,7 @@ import android.util.Log
 import coil.ImageLoader
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import com.example.data.database.CatCacheEntity
@@ -23,7 +24,7 @@ class ListRepositoryImpl(
     private val imageLoader: ImageLoader,
     private val applicationContext: Context
 ) : ListRepository {
-
+    
     override fun getElements(): Flow<List<ListElementEntity>> {
         return catDao.getCatsFlow() // 1. Берем постоянный поток данных из БД
             .map { catsFromCache -> // 2. Мапим каждую новую порцию данных в доменную модель
@@ -31,18 +32,20 @@ class ListRepositoryImpl(
             }
             .onStart { // 3. При первой подписке на этот Flow, выполняем этот блок
                 try {
-                    // Пытаемся загрузить свежие данные из сети
-                    val catsFromApi = apiService.getCatImages()
-                    val cacheEntities = catsFromApi.map { dtoToCacheMapper.map(it) }
-                    // И сохраняем их в БД. Room автоматически разошлёт
-                    // это обновление всем, кто подписан на getCatsFlow()
-                    catDao.clearAndInsert(cacheEntities)
-                    // НОВАЯ ЛОГИКА: Запускаем pre-fetching картинок
-                    precacheImages(cacheEntities)
+                    val currentCats = catDao.getCatsSync()
+                    
+                    if (currentCats.isEmpty()) {
+                        Log.d("ListRepositoryImpl", "Database is empty, loading from network")
+                        val catsFromApi = apiService.getCatImages()
+                        val cacheEntities = catsFromApi.map { dtoToCacheMapper.map(it) }
+                        catDao.insertCats(cacheEntities)
+                        precacheImages(cacheEntities)
+                    } else {
+
+                        Log.d("ListRepositoryImpl", "Using cached data (${currentCats.size} items)")
+                    }
                 } catch (e: Exception) {
                     Log.e("ListRepositoryImpl", "Network update failed", e)
-                    // Если сеть упала, ничего страшного. Flow продолжит работать,
-                    // отдавая старые данные из кэша.
                 }
             }
     }
@@ -55,14 +58,24 @@ class ListRepositoryImpl(
         }
     }
 
+    override suspend fun toggleLike(elementId: String) {
+        val currentEntity = catDao.getCatById(elementId)
+            .map { it }
+            .first()
+        
+        currentEntity?.let { entity ->
+            val newLikeStatus = !entity.isLiked
+            catDao.updateLikeStatus(elementId, newLikeStatus)
+        }
+    }
+
     private fun precacheImages(cats: List<CatCacheEntity>) {
         cats.forEach { cat ->
             val request = ImageRequest.Builder(applicationContext)
                 .data(cat.url)
-                // Опционально: можно указать, куда кэшировать (только диск)
-                // .diskCachePolicy(CachePolicy.ENABLED)
                 .build()
             imageLoader.enqueue(request)
         }
     }
 }
+

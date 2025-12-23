@@ -26,3 +26,4 @@ class NextTrackActionCallback : ActionCallback {
         // который, получив эту команду, обновит виджет с новыми данными.
     }
 }
+

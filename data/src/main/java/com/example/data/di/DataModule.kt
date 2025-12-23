@@ -34,12 +34,12 @@ val dataModule = module {
     }
 
     // Database
-    single {
+    single { 
         Room.databaseBuilder(
-            androidContext(),
-            AppDatabase::class.java,
+            androidContext(), 
+            AppDatabase::class.java, 
             "app_database"
-        ).build()
+        ).build() 
     }
     single { get<AppDatabase>().catDao() }
 
@@ -51,22 +51,23 @@ val dataModule = module {
     }
 
     // Mappers
-    factory<Mapper<CatImageDto, CatCacheEntity>>(DTO_TO_CACHE_MAPPER) {
-        CatDtoToCacheMapper()
+    factory<Mapper<CatImageDto, CatCacheEntity>>(DTO_TO_CACHE_MAPPER) { 
+        CatDtoToCacheMapper() 
     }
-    factory<Mapper<CatCacheEntity, ListElementEntity>>(CACHE_TO_DOMAIN_MAPPER) {
-        CatCacheToDomainMapper()
+    factory<Mapper<CatCacheEntity, ListElementEntity>>(CACHE_TO_DOMAIN_MAPPER) { 
+        CatCacheToDomainMapper() 
     }
 
     // Repository
-    single<ListRepository> {
+    single<ListRepository> { 
         ListRepositoryImpl(
-            get(),
+            get(), 
             get(),
             dtoToCacheMapper = get(qualifier = DTO_TO_CACHE_MAPPER),
             cacheToDomainMapper = get(qualifier = CACHE_TO_DOMAIN_MAPPER),
             get(),
             androidContext()
-        )
+        ) 
     }
 }
+

@@ -2,38 +2,27 @@ package com.example.cleanapp.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.cleanapp.R
 import com.example.cleanapp.main.vm.MainState
-import com.example.cleanapp.main.vm.PlayerState
 import com.example.cleanapp.ui.theme.CleanAppTheme
 import com.example.domain.entity.ListElementEntity
 
@@ -41,9 +30,10 @@ import com.example.domain.entity.ListElementEntity
 @Composable
 fun MainScreen(
     state: MainState,
-    playerState: PlayerState,    // Данные из Плеера
+    playerState: com.example.cleanapp.main.vm.PlayerState, // Данные из Плеера
     onPlayPauseClick: (String) -> Unit, // Клик по кнопке Play
-    onElementClick: (String) -> Unit
+    onElementClick: (String) -> Unit,
+    onToggleLike: (String) -> Unit // Клик по кнопке Лайк
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -52,10 +42,11 @@ fun MainScreen(
         when (state) {
             is MainState.Content -> ContentState(
                 list = state.list,
-                currentTrackIndex = playerState.currentTrackIndex,
+                selectedCatId = playerState.selectedCatId,
                 isPlaying = playerState.isPlaying,
                 onPlayPauseClick = onPlayPauseClick,
-                onElementClick = onElementClick
+                onElementClick = onElementClick,
+                onToggleLike = onToggleLike
             )
             is MainState.Error -> ErrorState(message = state.message)
             MainState.Loading -> LoadingState()
@@ -77,29 +68,28 @@ fun ErrorState(message: String) {
 @Composable
 fun ContentState(
     list: List<ListElementEntity>,
-    currentTrackIndex: Int,
+    selectedCatId: String?,
     isPlaying: Boolean,
     onPlayPauseClick: (String) -> Unit,
-    onElementClick: (String) -> Unit
+    onElementClick: (String) -> Unit,
+    onToggleLike: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
     ) {
-        // Используем itemsIndexed, чтобы сопоставить индекс списка с индексом плеера
         itemsIndexed(list) { index, element ->
-            // Логика отображения: так как треков всего 2, мы используем остаток от деления.
-            // Элементы 0, 2, 4... управляют треком 1 (индекс 0)
-            // Элементы 1, 3, 5... управляют треком 2 (индекс 1)
-            val isLinkedToCurrentTrack = (index % 2 == currentTrackIndex)
-            val showPauseIcon = isLinkedToCurrentTrack && isPlaying
+            val isSelected = (element.id == selectedCatId)
+            val showPauseIcon = isSelected && isPlaying
 
             ElementRow(
                 element = element,
                 showPauseIcon = showPauseIcon,
                 onPlayClick = { onPlayPauseClick(element.id) },
-                onItemClick = { onElementClick(element.id) }
+                onItemClick = { onElementClick(element.id) },
+                onToggleLike = { onToggleLike(element.id) },
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -111,44 +101,110 @@ fun ElementRow(
     showPauseIcon: Boolean,
     onPlayClick: () -> Unit,
     onItemClick: () -> Unit,
+    onToggleLike: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp),
+    androidx.compose.material3.Card(
+        modifier = modifier,
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(4.dp),
         onClick = onItemClick
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .height(120.dp) // Фиксированная высота для красивого отображения
         ) {
-            // Кнопка Play/Pause
-            IconButton(
-                onClick = onPlayClick,
-                modifier = Modifier.size(48.dp)
+            // Изображение котика на весь фон
+            AsyncImage(
+                model = element.image,
+                contentDescription = "Album Art",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                placeholder = androidx.compose.ui.res.painterResource(
+                    id = com.example.cleanapp.R.drawable.ic_launcher_foreground
+                ),
+                error = androidx.compose.ui.res.painterResource(
+                    id = com.example.cleanapp.R.drawable.ic_launcher_foreground
+                )
+            )
+
+            // Scrim
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.5f), // Темнее
+                                Color.Black.copy(alpha = 0.7f)  // Темнее
+                            )
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 32.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(
-                        id = if (showPauseIcon) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                    ),
-                    contentDescription = "Play/Pause",
-                    tint = MaterialTheme.colorScheme.primary
+                androidx.compose.material3.IconButton(
+                    onClick = onPlayClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = Color.White,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                ) {
+                    androidx.compose.material3.Icon(
+                        painter = androidx.compose.ui.res.painterResource(
+                            id = if (showPauseIcon) com.example.cleanapp.R.drawable.ic_pause
+                            else com.example.cleanapp.R.drawable.ic_play_arrow
+                        ),
+                        contentDescription = "Play/Pause",
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                Text(
+                    text = element.title,
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            // Текст и картинка
-            Column {
-                AsyncImage(
-                    model = element.image,
-                    contentDescription = "Element Image ${element.title}",
-                    modifier = Modifier.size(64.dp),
-                    placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
-                    error = painterResource(id = R.drawable.ic_launcher_foreground)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = element.title, style = MaterialTheme.typography.titleMedium)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                androidx.compose.material3.IconButton(
+                    onClick = onToggleLike,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = if (element.like)
+                            androidx.compose.material.icons.Icons.Default.Favorite
+                        else
+                            androidx.compose.material.icons.Icons.Default.FavoriteBorder,
+                        contentDescription = "Toggle Favorite",
+                        tint = if (element.like)
+                            Color.Red
+                        else
+                           Color.White
+                    )
+                }
             }
         }
     }
@@ -165,18 +221,14 @@ private val sampleDataForPreview = listOf(
 @Composable
 fun ContentStatePreview() {
     CleanAppTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ContentState(
-                list = sampleDataForPreview,
-                currentTrackIndex = 0,
-                isPlaying = true,
-                onPlayPauseClick = {},
-                onElementClick = {}
-            )
-        }
+        ContentState(
+            list = sampleDataForPreview,
+            selectedCatId = "1",
+            isPlaying = true,
+            onPlayPauseClick = {},
+            onElementClick = {},
+            onToggleLike = {}
+        )
     }
 }
 

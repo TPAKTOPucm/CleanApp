@@ -11,15 +11,15 @@ class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-
         val action = intent.action ?: return
 
         if (action == MusicWidgetActions.ACTION_PLAY_PAUSE ||
-            action == MusicWidgetActions.ACTION_NEXT_TRACK
+            action == MusicWidgetActions.ACTION_NEXT_TRACK ||
+            action == MusicWidgetActions.ACTION_TOGGLE_LIKE
         ) {
             // Создаем Intent, адресованный нашему сервису
             val serviceIntent = Intent(context, PlaybackService::class.java).apply {
-                this.action = action // Передаем action (PLAY_PAUSE или NEXT) дальше
+                this.action = action
             }
             // Запускаем сервис с этой командой
             // startForegroundService гарантирует доставку, даже если приложение в фоне
@@ -31,3 +31,4 @@ class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
         }
     }
 }
+

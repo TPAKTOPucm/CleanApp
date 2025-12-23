@@ -17,3 +17,4 @@ class CatCacheToDomainMapper : Mapper<CatCacheEntity, ListElementEntity> {
         )
     }
 }
+

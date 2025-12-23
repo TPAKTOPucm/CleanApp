@@ -37,7 +37,7 @@ android {
 dependencies {
     // Domain module
     implementation(project(":domain"))
-
+    
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

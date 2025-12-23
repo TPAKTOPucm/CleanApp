@@ -7,3 +7,5 @@ data class CatImageDto(
     val id: String,
     val url: String
 )
+
+

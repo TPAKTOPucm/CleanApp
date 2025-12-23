@@ -10,20 +10,22 @@ import com.example.cleanapp.main.vm.MainViewModel
 import com.example.cleanapp.workers.FilterWorker
 import com.example.domain.usecase.GetCatsUseCase
 import com.example.domain.usecase.GetCatsByIdUseCase
+import com.example.domain.usecase.ToggleLikeUseCase
 
 val appModule = module {
     // Use Cases
     factory { GetCatsUseCase(get()) }
     factory { GetCatsByIdUseCase(get()) }
+    factory { ToggleLikeUseCase(get()) }
 
-    // WorkManager (остаётся - это 8-я практика)
+    // WorkManager
     single { WorkManager.getInstance(androidContext()) }
 
-    // Workers (остаётся - это 8-я практика)
+    // Workers
     worker { FilterWorker(get(), get(), get()) }
 
     // ViewModels
-    viewModel { MainViewModel(get()) }
+    viewModel { MainViewModel(get(), get()) }
 
     viewModel { params ->
         DetailsViewModel(

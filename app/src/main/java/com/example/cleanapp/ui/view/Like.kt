@@ -17,3 +17,4 @@ fun Like(modifier: Modifier = Modifier, isLiked: Boolean) {
         tint = if (isLiked) Color.Red else Color.Gray
     )
 }
+

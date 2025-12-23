@@ -16,23 +16,32 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.example.domain.entity.ListElementEntity
 import com.example.domain.usecase.GetCatsUseCase
+import com.example.domain.usecase.ToggleLikeUseCase
 
+// Расширяем состояние, добавляя информацию о плеере
 data class PlayerState(
-    val currentTrackIndex: Int = -1, // Какой трек сейчас выбран (-1 если никакой)
+    val selectedCatId: String? = null, // ID выбранного кота
     val isPlaying: Boolean = false // Играет или на паузе
 )
 
+// События для Activity (Clean Architecture - ViewModel не зависит от Android-компонентов)
+sealed class PlaybackEvent {
+    data class SelectCat(val catId: String, val catIndex: Int) : PlaybackEvent()
+    data class UpdateLike(val catId: String) : PlaybackEvent()
+}
+
 class MainViewModel(
-    private val getCatsUseCase: GetCatsUseCase
+    private val getCatsUseCase: GetCatsUseCase,
+    private val toggleLikeUseCase: ToggleLikeUseCase
 ) : ViewModel() {
     /**
      * StateFlow для состояния UI.
-     * 1. Вызывает getElementsUseCase(), который возвращает Flow<List<...>>.
+     * 1. Вызываем getCatsUseCase(), который возвращает Flow<List<...>>.
      * 2. С помощью .map преобразуем каждый новый список в соответствующий MainState.
-     * Если список пуст (что возможно при первом запуске, пока данные не загрузились), показывает Loading.
+     *    Если список пуст (что возможно при первом запуске, пока данные не загрузились), показываем Loading.
      * 3. С помощью .catch ловим любые ошибки во Flow и преобразуем их в MainState.Error.
      * 4. С помощью .stateIn преобразуем "холодный" Flow в "горячий" StateFlow,
-     * который кэширует последнее значение и доступен для UI.
+     *    который кэширует последнее значение и доступен для UI.
      */
     val state: StateFlow<MainState> = getCatsUseCase.execute(Unit)
         .map<List<ListElementEntity>, MainState> { list ->
@@ -71,8 +80,7 @@ class MainViewModel(
 
     private fun updatePlayerState() {
         mediaController?.let {
-            _playerState.value = PlayerState(
-                currentTrackIndex = it.currentMediaItemIndex,
+            _playerState.value = _playerState.value.copy(
                 isPlaying = it.isPlaying
             )
         }
@@ -80,32 +88,35 @@ class MainViewModel(
 
     fun onPlayPauseClicked(elementId: String) {
         val controller = mediaController ?: return
-
         // Получаем текущий список из StateFlow
         val currentState = state.value
         if (currentState !is MainState.Content) return
 
-        // Ищем позицию элемента в списке, который пришел из UseCase
+        // Ищем позицию элемента в списке
         val targetIndex = currentState.list.indexOfFirst { it.id == elementId }
-
         if (targetIndex == -1) return // Элемент не найден
 
-        // Поскольку у нас в Сервисе всего 2 трека, а список может быть длинным,
-        // используем оператор остатка (%), чтобы треки повторялись для списка
-        // (0->0, 1->1, 2->0, 3->1...)
-        // Если хотите жесткое соответствие, уберите '% 2'
+        // Трек выбираем по четности: 0,2,4...→track_1, 1,3,5...→track_2
         val trackInPlaylist = targetIndex % 2
 
-        if (trackInPlaylist == controller.currentMediaItemIndex) {
-            // Кликнули по тому, что сейчас играет -> Пауза/Плей
-            if (controller.isPlaying) {
-                controller.pause()
-            } else {
-                controller.play()
-            }
+        // Проверяем - это уже выбранный кот?
+        val isAlreadySelected = (_playerState.value.selectedCatId == elementId)
+
+        if (isAlreadySelected && controller.isPlaying) {
+            controller.pause()
+            _playerState.value = _playerState.value.copy(isPlaying = false)
         } else {
-            // Кликнули по другому -> Переключить трек
-            controller.seekToDefaultPosition(trackInPlaylist)
+            viewModelScope.launch {
+                _playbackEvent.send(PlaybackEvent.SelectCat(elementId, targetIndex))
+            }
+            _playerState.value = PlayerState(
+                selectedCatId = elementId,
+                isPlaying = true
+            )
+
+            if (trackInPlaylist != controller.currentMediaItemIndex) {
+                controller.seekToDefaultPosition(trackInPlaylist)
+            }
             controller.playWhenReady = true
             controller.prepare()
             controller.play()
@@ -114,6 +125,8 @@ class MainViewModel(
 
     private val _navigationEvent = Channel<String>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
+    private val _playbackEvent = Channel<PlaybackEvent>()
+    val playbackEvent = _playbackEvent.receiveAsFlow()
 
     // Метод, который будет вызывать UI
     fun onElementClick(elementId: String) {
@@ -122,4 +135,16 @@ class MainViewModel(
             _navigationEvent.send(elementId)
         }
     }
+
+    fun onToggleLike(elementId: String) {
+        viewModelScope.launch {
+            toggleLikeUseCase.executeSuspend(elementId)
+            _playbackEvent.send(PlaybackEvent.UpdateLike(elementId))
+        }
+    }
+
+    fun updateSelectedCatId(catId: String) {
+        _playerState.value = _playerState.value.copy(selectedCatId = catId)
+    }
 }
+

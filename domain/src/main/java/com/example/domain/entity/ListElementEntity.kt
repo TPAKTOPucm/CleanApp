@@ -6,3 +6,4 @@ data class ListElementEntity(
     val image: String,
     val like: Boolean
 )
+

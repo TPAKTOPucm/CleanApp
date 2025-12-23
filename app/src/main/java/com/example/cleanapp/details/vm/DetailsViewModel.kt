@@ -1,9 +1,5 @@
 package com.example.cleanapp.details.vm
 
-
-import com.example.cleanapp.workers.KEY_FILTERED_URI
-import com.example.cleanapp.workers.KEY_IMAGE_URI
-import com.example.domain.usecase.GetCatsByIdUseCase
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +13,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import com.example.cleanapp.workers.KEY_FILTERED_URI
+import com.example.cleanapp.workers.KEY_IMAGE_URI
+import com.example.domain.usecase.GetCatsByIdUseCase
 import java.util.UUID
 
 class DetailsViewModel(

@@ -1,8 +1,8 @@
 package com.example.domain.usecase
 
+import kotlinx.coroutines.flow.Flow
 import com.example.domain.entity.ListElementEntity
 import com.example.domain.repository.ListRepository
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Use Case для получения списка котиков.
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 class GetCatsUseCase(
     private val listRepository: ListRepository
 ) : UseCase<Unit, Flow<List<ListElementEntity>>> {
-
+    
     override fun execute(data: Unit): Flow<List<ListElementEntity>> {
         // UseCase просто делегирует вызов репозиторию.
         // Здесь может быть дополнительная бизнес-логика (сортировка, фильтрация),
@@ -19,3 +19,4 @@ class GetCatsUseCase(
         return listRepository.getElements()
     }
 }
+

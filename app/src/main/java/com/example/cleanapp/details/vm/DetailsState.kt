@@ -7,3 +7,5 @@ sealed class DetailsState {
     data class Error(val message: String) : DetailsState()
     data class Content(val element: ListElementEntity) : DetailsState()
 }
+
+

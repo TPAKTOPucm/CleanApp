@@ -7,3 +7,4 @@ sealed class MainState {
     data class Content(val list: List<ListElementEntity>) : MainState()
     data class Error(val message: String) : MainState()
 }
+
