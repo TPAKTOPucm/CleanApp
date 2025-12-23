@@ -1,8 +1,10 @@
 package com.example.domain.repository
 
 import com.example.domain.entity.ListElementEntity
+import kotlinx.coroutines.flow.Flow
 
 interface ListRepository {
-    suspend fun getElements(): Result<List<ListElementEntity>>
-    suspend fun getElementById(id: String): Result<ListElementEntity>
+    fun getElements(): Flow<List<ListElementEntity>>
+    fun getElement(id: String): Flow<ListElementEntity?>
 }
+

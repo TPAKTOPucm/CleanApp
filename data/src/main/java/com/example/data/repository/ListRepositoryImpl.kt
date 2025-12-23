@@ -1,29 +1,68 @@
 package com.example.data.repository
 
-import com.example.data.mapper.toDomain
+import android.content.Context
+import android.util.Log
+import coil.ImageLoader
+import coil.request.ImageRequest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import com.example.data.database.CatCacheEntity
+import com.example.data.database.CatDao
 import com.example.data.network.ApiService
+import com.example.data.network.response.CatImageDto
 import com.example.domain.entity.ListElementEntity
+import com.example.domain.mapper.Mapper
 import com.example.domain.repository.ListRepository
 
 class ListRepositoryImpl(
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val catDao: CatDao,
+    private val dtoToCacheMapper: Mapper<CatImageDto, CatCacheEntity>,
+    private val cacheToDomainMapper: Mapper<CatCacheEntity, ListElementEntity>,
+    private val imageLoader: ImageLoader,
+    private val applicationContext: Context
 ) : ListRepository {
-    override suspend fun getElements():
-            Result<List<ListElementEntity>> {
-        return try {
-            val dtoList = apiService.getCatImages()
-            Result.success(dtoList.map { it.toDomain() })
-        } catch (e: Exception) {
-            Result.failure(e)
+
+    override fun getElements(): Flow<List<ListElementEntity>> {
+        return catDao.getCatsFlow() // 1. Берем постоянный поток данных из БД
+            .map { catsFromCache -> // 2. Мапим каждую новую порцию данных в доменную модель
+                catsFromCache.map { cacheToDomainMapper.map(it) }
+            }
+            .onStart { // 3. При первой подписке на этот Flow, выполняем этот блок
+                try {
+                    // Пытаемся загрузить свежие данные из сети
+                    val catsFromApi = apiService.getCatImages()
+                    val cacheEntities = catsFromApi.map { dtoToCacheMapper.map(it) }
+                    // И сохраняем их в БД. Room автоматически разошлёт
+                    // это обновление всем, кто подписан на getCatsFlow()
+                    catDao.clearAndInsert(cacheEntities)
+                    // НОВАЯ ЛОГИКА: Запускаем pre-fetching картинок
+                    precacheImages(cacheEntities)
+                } catch (e: Exception) {
+                    Log.e("ListRepositoryImpl", "Network update failed", e)
+                    // Если сеть упала, ничего страшного. Flow продолжит работать,
+                    // отдавая старые данные из кэша.
+                }
+            }
+    }
+
+    override fun getElement(id: String): Flow<ListElementEntity?> {
+        // Для одного элемента обновление из сети не делаем (для простоты),
+        // просто берем актуальные данные из кэша.
+        return catDao.getCatById(id).map { catFromCache ->
+            catFromCache?.let { cacheToDomainMapper.map(it) }
         }
     }
 
-    override suspend fun getElementById(id: String): Result<ListElementEntity> {
-        return try {
-            val dto = apiService.getCatImageById(id)
-            Result.success(dto.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
+    private fun precacheImages(cats: List<CatCacheEntity>) {
+        cats.forEach { cat ->
+            val request = ImageRequest.Builder(applicationContext)
+                .data(cat.url)
+                // Опционально: можно указать, куда кэшировать (только диск)
+                // .diskCachePolicy(CachePolicy.ENABLED)
+                .build()
+            imageLoader.enqueue(request)
         }
     }
 }

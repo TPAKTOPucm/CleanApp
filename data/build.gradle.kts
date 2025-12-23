@@ -7,12 +7,10 @@ plugins {
 
 android {
     namespace = "com.example.data"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 23
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
@@ -37,21 +35,21 @@ android {
 }
 
 dependencies {
+    // Domain module
     implementation(project(":domain"))
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     // Koin
     implementation(libs.koin.android)
-    // Retrofit
+    // Retrofit with Kotlinx Serialization
     implementation(libs.retrofit.core)
-    implementation(libs.retrofit.converter.gson)
     implementation(libs.retrofit.converter.kotlinx.serialization)
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
+    implementation(libs.kotlinx.serialization.json)
+    // Coil for image precaching
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

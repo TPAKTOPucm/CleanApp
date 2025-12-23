@@ -1,0 +1,15 @@
+package com.example.data.mapper
+
+import com.example.data.database.CatCacheEntity
+import com.example.data.network.response.CatImageDto
+import com.example.domain.mapper.Mapper
+
+/**
+ * Маппер для преобразования сетевой модели CatImageDto в модель кэша CatCacheEntity.
+ */
+class CatDtoToCacheMapper : Mapper<CatImageDto, CatCacheEntity> {
+    override fun map(input: CatImageDto): CatCacheEntity {
+        return CatCacheEntity(id = input.id, url = input.url)
+    }
+}
+

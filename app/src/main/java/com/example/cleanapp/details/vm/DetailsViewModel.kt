@@ -1,40 +1,93 @@
 package com.example.cleanapp.details.vm
 
+
+import com.example.cleanapp.workers.KEY_FILTERED_URI
+import com.example.cleanapp.workers.KEY_IMAGE_URI
+import com.example.domain.usecase.GetCatsByIdUseCase
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
-import com.example.cleanapp.details.DetailsScreenRoute
-import com.example.domain.entity.ListElementEntity
-import com.example.domain.repository.ListRepository
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class DetailsViewModel(
-    savedStateHandle: SavedStateHandle,
-    val repository: ListRepository
+    private val getCatsByIdUseCase: GetCatsByIdUseCase,
+    private val workManager: WorkManager,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private val _state =
-        MutableStateFlow<DetailsState>(DetailsState.Loading)
-    val state: StateFlow<DetailsState> get() = _state
-    // Временно создадим здесь тот же самый список для симуляции
-    private val sampleData = listOf(
-        ListElementEntity("1", "Continue Cat", "https://http.cat/images/100.jpg", true),
-        ListElementEntity("2", "Ok Cat", "https://http.cat/images/200.jpg", true),
-        ListElementEntity("3", "Multiple Cat", "https://http.cat/images/300.jpg", false)
-    )
+
+    // Меняем на MutableStateFlow, чтобы иметь возможность обновлять его изнутри
+    private val _state = MutableStateFlow<DetailsState>(DetailsState.Loading)
+    val state = _state.asStateFlow()
+
     init {
         viewModelScope.launch {
-            val routeInfo =
-                savedStateHandle.toRoute<DetailsScreenRoute>()
-            val elementId = routeInfo.id
-            val element = repository.getElementById(elementId)
-            if (element.isSuccess) {
-                _state.emit(DetailsState.Content(element.getOrThrow()))
-            } else {
-                _state.emit(DetailsState.Error("Элемент с ID $elementId не найден"))
+            val elementId = savedStateHandle.get<String>("id")
+            if (elementId != null) {
+                getCatsByIdUseCase.execute(elementId).collect { element ->
+                    if (element != null) {
+                        _state.value = DetailsState.Content(element)
+                    } else {
+                        _state.value = DetailsState.Error("Элемент с ID $elementId не найден")
+                    }
+                }
             }
+        }
+    }
+
+    // Метод для запуска фоновой задачи из UI
+    fun applyFilter() {
+        val currentState = _state.value as? DetailsState.Content ?: return
+        val currentImageUri = currentState.element.image
+
+        // 1. Создаем ограничения для задачи
+        val constraints = Constraints.Builder()
+            .setRequiresCharging(true)
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // 2. Создаем запрос, передавая в него URI картинки и ограничения
+        val filterRequest = OneTimeWorkRequestBuilder<com.example.cleanapp.workers.FilterWorker>()
+            .setInputData(workDataOf(KEY_IMAGE_URI to currentImageUri))
+            .setConstraints(constraints)
+            .build()
+
+        // 3. Ставим задачу в очередь
+        workManager.enqueue(filterRequest)
+
+        // 4. Сразу же начинаем отслеживать ее результат
+        observeWorkResult(filterRequest.id)
+    }
+
+    // Метод для отслеживания результата работы Worker'а
+    private fun observeWorkResult(workId: UUID) {
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(workId)
+                .filterNotNull()
+                .collect { workInfo ->
+                    // Как только работа успешно завершена...
+                    if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                        // ...получаем URI отфильтрованного изображения...
+                        val filteredUri = workInfo.outputData.getString(KEY_FILTERED_URI)
+                        if (filteredUri != null) {
+                            // ...и обновляем наш State новым элементом
+                            val oldElement = (_state.value as? DetailsState.Content)?.element
+                            if (oldElement != null) {
+                                val newElement = oldElement.copy(image = filteredUri)
+                                _state.value = DetailsState.Content(newElement)
+                            }
+                        }
+                    }
+                }
         }
     }
 }
